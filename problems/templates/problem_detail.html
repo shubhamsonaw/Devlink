@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="max-w-5xl mx-auto">
+
+    <!-- TITLE + META -->
+    <div class="border-b pb-4 mb-6">
+
+        <div class="flex flex-wrap items-center gap-3">
+            <h1 class="text-2xl font-semibold text-gray-900">{{ problem.title }}</h1>
+            {% if problem.status == 'resolved' %}
+            <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">Resolved</span>
+            {% else %}
+            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Open</span>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center justify-between mt-3 text-sm text-gray-500">
+
+            <!-- LEFT META -->
+            <div class="flex items-center gap-3">
+
+                <!-- Difficulty -->
+                <span class="
+                    px-2 py-1 text-xs font-medium rounded
+                    {% if problem.difficulty == 'easy' %}
+                        bg-green-100 text-green-700
+                    {% elif problem.difficulty == 'medium' %}
+                        bg-yellow-100 text-yellow-700
+                    {% else %}
+                        bg-red-100 text-red-700
+                    {% endif %}
+                ">
+                    {{ problem.difficulty|upper }}
+                </span>
+
+                <!-- Tags -->
+                {% for tag in problem.tags.all %}
+                    <span class="bg-gray-100 px-2 py-1 rounded text-xs text-gray-700">
+                        {{ tag.name }}
+                    </span>
+                {% endfor %}
+
+            </div>
+
+            <!-- RIGHT META -->
+            <div>
+                asked by 
+                <a href="{% url 'accounts:profile' problem.user.username %}" 
+                   class="text-blue-600 hover:underline">
+                    {{ problem.user.username }}
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- CONTENT -->
+    <div class="text-gray-800 leading-relaxed text-[15px] mb-8">
+        {{ problem.description }}
+    </div>
+
+    {% if accepted_solution %}
+    <section class="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h2 class="font-semibold text-green-900">Accepted solution</h2>
+                <p class="mt-1 text-sm text-green-800">Solved by <a href="{% url 'accounts:profile' accepted_solution.user.username %}" class="font-medium hover:underline">{{ accepted_solution.user.username }}</a></p>
+            </div>
+            <a href="{% url 'solution_list' problem.id %}" class="text-sm font-medium text-green-800 hover:underline">Review solution</a>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if user == problem.user %}
+    <form method="POST" action="{% url 'set_problem_status' problem.id %}" class="mb-6">
+        {% csrf_token %}
+        {% if problem.status == 'open' %}
+            {% if not accepted_solution %}
+            <p class="text-sm text-gray-500">Accept a solution before marking this problem resolved.</p>
+            {% elif accepted_project and accepted_project.status == 'active' %}
+            <p class="text-sm text-gray-500">Complete the active collaboration project before resolving this problem.</p>
+            {% else %}
+            <input type="hidden" name="status" value="resolved">
+            <button type="submit" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700">Mark problem resolved</button>
+            {% endif %}
+        {% else %}
+        <input type="hidden" name="status" value="open">
+        <button type="submit" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Reopen problem</button>
+        {% endif %}
+    </form>
+    {% endif %}
+
+    <!-- ACTION BAR -->
+    <div class="flex items-center gap-4 border-t pt-4">
+
+        {% comment %} <a href="{% url 'solution_create' problem.id %}"
+           class="px-4 py-2 bg-gray-500 text-white text-sm rounded hover:bg-gray-700">
+            Solve
+        </a> {% endcomment %}
+
+        {% if problem.status == 'resolved' %}
+            <span class="rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-800">Problem resolved</span>
+        {% elif user.is_authenticated %}
+            <a href="{% url 'solution_create' problem.id %}"
+            class="px-4 py-2 bg-gray-500 text-white text-sm rounded hover:bg-gray-700">
+                Solve
+            </a>
+        {% else %}
+            <a href="{% url 'accounts:login' %}?next={{ request.path }}"
+            class="px-4 py-2 bg-gray-500 text-white text-sm rounded hover:bg-gray-700">
+                Login to Solve
+            </a>
+        {% endif %}
+
+        <a href="{% url 'solution_list' problem.id %}"
+           class="px-4 py-2 border text-sm rounded hover:bg-gray-100">
+            View Solutions
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+
+{% comment %} <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+
+    <!-- LEFT SIDE (QUESTION) -->
+    <div style="width: 75%;">
+
+        <h2>{{ problem.title }}</h2>
+
+
+
+        <div style="margin-bottom: 10px;">
+            {% for tag in problem.tags.all %}
+                <a href="{% url 'problem_list' %}?tag={{ tag.name }}" style="text-decoration:none;">
+                    <span style="
+                        background-color: #eee;
+                        padding: 4px 8px;
+                        border-radius: 5px;
+                        margin-right: 5px;
+                    ">
+                        {{ tag.name }}
+                    </span>
+                </a>
+            {% endfor %}
+        </div>
+
+        <p>{{ problem.description }}</p>
+
+        <a href="{% url 'accounts:profile' problem.user.username %}">
+            {{ problem.user.username }}
+        </a>
+
+        <hr>
+
+        <a href="{% url 'solution_create' problem.id %}">Solve this Problem</a>
+        <a href="{% url 'solution_list' problem.id %}">View Solutions</a>
+
+    </div>
+
+    <!-- RIGHT SIDE (DIFFICULTY TAG) -->
+    <div style="width: 20%; text-align: right; margin-top: 25px;">
+
+        <span style="
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            background-color:
+                {% if problem.difficulty == 'easy' %}green
+                {% elif problem.difficulty == 'medium' %}orange
+                {% else %}red
+                {% endif %}
+        ">
+            {{ problem.difficulty|upper }}
+        </span>
+
+    </div>
+
+</div> {% endcomment %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto mt-10 rounded-xl border bg-white p-6">
+<h2 class="mb-4 text-xl font-semibold">Create your account</h2>
+{% for message in messages %}<p class="mb-3 text-sm text-red-600">{{ message }}</p>{% endfor %}
+
+<form method="POST" class="space-y-3">
+    {% csrf_token %}
+
+    <label>Username:</label><br>
+    <input class="w-full rounded border p-2" type="text" name="username" required maxlength="150"><br><br>
+
+    <label>Email:</label><br>
+    <input class="w-full rounded border p-2" type="email" name="email" required><br><br>
+
+    <label>Password:</label><br>
+    <input class="w-full rounded border p-2" type="password" name="password" required><br><br>
+
+    <button type="submit">Signup</button>
+</form>
+</div>
+{% endblock %}

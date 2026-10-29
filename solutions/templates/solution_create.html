@@ -1,0 +1,75 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="mb-4 p-3 bg-gray-100 text-gray-700 rounded">
+
+    <!-- Title -->
+    <h2 class="text-2xl font-bold mb-4">
+        Add Solution
+    </h2>
+
+    <!-- Problem Title -->
+    <p class="text-gray-600 mb-4">
+        Problem: 
+        <span class="font-semibold text-blue-600">
+            {{ problem.title }}
+        </span>
+    </p>
+
+    {% if error %}
+        <div class="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form method="POST" onsubmit="return validateForm()">
+        {% csrf_token %}
+
+        <!-- Explanation -->
+        <label class="block font-semibold mb-1">Explanation</label>
+        <textarea 
+            name="explanation" 
+            rows="4"
+            class="w-full border rounded p-3 mb-4"
+            placeholder="Explain your approach..."></textarea>
+
+        <!-- Code -->
+        <label class="block font-semibold mb-1">Code (optional)</label>
+        <textarea 
+            name="code" 
+            rows="6"
+            class="w-full border rounded p-3 mb-4"
+            placeholder="Write your code..."></textarea>
+
+        <!-- Submit -->
+        <button 
+            type="submit"
+            class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition">
+            Submit Solution
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}
+
+
+<script>
+function validateForm() {
+    const explanation = document.querySelector('[name="explanation"]').value.trim();
+    const code = document.querySelector('[name="code"]').value.trim();
+
+    if (!explanation && !code) {
+        alert("⚠️ Please add at least explanation or code.");
+        return false;
+    }
+    return true;
+}
+</script>
+
+
+

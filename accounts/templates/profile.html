@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">{{ profile_user.username }}</h1>
+                <p class="mt-2 text-sm text-gray-600">
+                    {% if profile.bio %}
+                        {{ profile.bio }}
+                    {% else %}
+                        No bio added yet.
+                    {% endif %}
+                </p>
+            </div>
+            
+
+            {% if request.user == profile_user %}
+                <a
+                    href="{% url 'accounts:edit_profile' %}"
+                    class="rounded-lg bg-gray-700 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+                >
+                    Edit Profile
+                </a>
+            {% endif %}
+
+            
+
+            {% if not is_connected and request.user != profile_user %}
+            <!-- show invite button -->
+            {% endif %}
+
+            {% if request.user.username != profile_user.username %}
+
+            <div class="mt-4">
+
+                
+
+                {% if is_connected %}
+
+                <a href="{% url 'chat' profile_user.username %}"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+                    Message
+                </a>
+
+
+                <span class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                    Connected
+                </span>
+
+            {% else %}
+
+                {% if request.user != profile_user and not is_connected %}
+                <button onclick="document.getElementById('inviteBox').classList.toggle('hidden')"
+                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                    Invite
+                </button>
+                {% endif %}
+            {% endif %}
+
+                <div id="inviteBox" class="hidden mt-3 bg-white border p-4 rounded-xl shadow-sm">
+
+                    <form method="POST" action="{% url 'send_invitation' %}">
+                        {% csrf_token %}
+
+                        <input type="hidden" name="username" value="{{ profile_user.username }}">
+
+                        <label class="text-sm text-gray-600">Message</label>
+                        <textarea name="message"
+                                class="w-full border p-2 rounded mt-1 mb-3"
+                                placeholder="Why do you want to collaborate?"></textarea>
+
+                        <button type="submit"
+                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            Send Invitation
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+
+            
+
+{% endif %}
+
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+            <p class="text-sm text-gray-500">Total Solutions</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900">{{ total_solutions }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+            <p class="text-sm text-gray-500">Accepted Solutions</p>
+            <p class="mt-1 text-2xl font-bold text-green-600">{{ accepted_solutions }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm">
+            <p class="text-sm text-gray-500">Total Votes</p>
+            <p class="mt-1 text-2xl font-bold text-blue-600">{{ total_votes }}</p>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-5 lg:flex-row">
+            <div class="min-w-0 flex-1">
+                <div class="mb-4 flex flex-wrap items-center gap-3">
+                    <h2 class="mr-auto text-lg font-semibold text-gray-900">
+                        <span id="contribution-total">0</span> contributions in <span id="selected-year">-</span>
+                    </h2>
+                    <div class="flex items-center gap-4 text-sm text-gray-600">
+                        <span>Active days: <strong id="active-days" class="text-gray-900">0</strong></span>
+                        <span>Current streak: <strong id="current-streak" class="text-gray-900">0</strong></span>
+                        <span>Max streak: <strong id="max-streak" class="text-gray-900">0</strong></span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <div id="contribution-graph" class="min-w-[760px]"></div>
+                </div>
+
+                <div class="mt-3 flex items-center justify-end gap-2 text-xs text-gray-500">
+                    <span>Less</span>
+                    <span class="h-3 w-3 rounded-[2px] bg-[#ebedf0]"></span>
+                    <span class="h-3 w-3 rounded-[2px] bg-[#9be9a8]"></span>
+                    <span class="h-3 w-3 rounded-[2px] bg-[#40c463]"></span>
+                    <span class="h-3 w-3 rounded-[2px] bg-[#30a14e]"></span>
+                    <span class="h-3 w-3 rounded-[2px] bg-[#216e39]"></span>
+                    <span>More</span>
+                </div>
+            </div>
+
+            <aside class="w-full shrink-0 rounded-xl border border-gray-200 bg-gray-50 p-3 lg:w-28">
+                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Year</p>
+                <div id="contribution-year-list" class="space-y-1"></div>
+            </aside>
+        </div>
+
+        <div id="contribution-data" class="hidden">
+            {% for problem in problems %}
+                <span data-date="{{ problem.created_at|date:'Y-m-d' }}"></span>
+            {% endfor %}
+            {% for sol in solutions %}
+                <span data-date="{{ sol.created_at|date:'Y-m-d' }}"></span>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-gray-900">Top Skills</h2>
+        {% if top_skills %}
+            <div class="mt-3 flex flex-wrap gap-2">
+                {% for skill, count in top_skills %}
+                    <span class="rounded-full bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
+                        {{ skill }} ({{ count }})
+                    </span>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="mt-2 text-sm text-gray-500">No skills yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900">Problems Posted</h2>
+            <div id="profile-problems-list" class="mt-3 space-y-2">
+                {% for problem in problems %}
+                    <div class="profile-problem-item rounded-lg border border-gray-200 bg-white p-3 transition hover:border-gray-300 hover:shadow-sm">
+                        <a href="{% url 'problem_detail' problem.id %}" class="block text-sm font-medium text-gray-800 hover:text-blue-600">
+                            {{ problem.title }}
+                        </a>
+                        <p class="mt-1 text-xs text-gray-500">{{ problem.created_at|timesince }} ago</p>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-gray-500">No problems posted.</p>
+                {% endfor %}
+            </div>
+            {% if problems|length > 7 %}
+                <div class="mt-4">
+                    <button
+                        type="button"
+                        id="toggle-problems-btn"
+                        class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                        View all problems
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900">Solutions</h2>
+            <div id="profile-solutions-list" class="mt-3 space-y-3">
+                {% for sol in solutions %}
+                    <div class="rounded-lg border border-gray-200 p-3 profile-solution-item">
+                        <p class="text-sm font-medium text-gray-900">{{ sol.problem.title }}</p>
+                        <div class="mt-2 flex items-center gap-2 text-xs text-gray-600">
+                            <span class="rounded bg-blue-50 px-2 py-1 text-blue-700">Votes: {{ sol.votes.count }}</span>
+                            {% if sol.is_accepted %}
+                                <span class="rounded bg-green-100 px-2 py-1 font-medium text-green-700">Accepted</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-sm text-gray-500">No solutions yet.</p>
+                {% endfor %}
+            </div>
+            {% if solutions|length > 7 %}
+                <div class="mt-4">
+                    <button
+                        type="button"
+                        id="toggle-solutions-btn"
+                        class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                        View all solutions
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-gray-900">Links</h2>
+        <div class="mt-3 space-y-2 text-sm">
+            <p class="text-gray-700">
+                <span class="font-semibold">GitHub:</span>
+                {% if profile.github %}
+                    <a href="{{ profile.github }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ profile.github }}</a>
+                {% else %}
+                    <span class="text-gray-500">Not added</span>
+                {% endif %}
+            </p>
+            <p class="text-gray-700">
+                <span class="font-semibold">LinkedIn:</span>
+                {% if profile.linkedin %}
+                    <a href="{{ profile.linkedin }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ profile.linkedin }}</a>
+                {% else %}
+                    <span class="text-gray-500">Not added</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const dataContainer = document.getElementById("contribution-data");
+    const graph = document.getElementById("contribution-graph");
+    const totalEl = document.getElementById("contribution-total");
+    const selectedYearEl = document.getElementById("selected-year");
+    const activeDaysEl = document.getElementById("active-days");
+    const currentStreakEl = document.getElementById("current-streak");
+    const streakEl = document.getElementById("max-streak");
+    const yearList = document.getElementById("contribution-year-list");
+
+    if (!dataContainer || !graph || !yearList) return;
+
+    const allDates = Array.from(dataContainer.querySelectorAll("[data-date]"))
+        .map((el) => el.getAttribute("data-date"))
+        .filter(Boolean);
+
+    const countByDate = {};
+    allDates.forEach((date) => {
+        countByDate[date] = (countByDate[date] || 0) + 1;
+    });
+
+    const fmt = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+    };
+
+    const colorFor = (count) => {
+        if (count <= 0) return "#ebedf0";
+        if (count === 1) return "#9be9a8";
+        if (count === 2) return "#40c463";
+        if (count <= 4) return "#30a14e";
+        return "#216e39";
+    };
+
+    const yearsWithData = Array.from(
+        new Set(allDates.map((date) => Number(date.slice(0, 4))).filter((year) => Number.isFinite(year)))
+    );
+    const currentYear = new Date().getFullYear();
+    const minYear = yearsWithData.length ? Math.min(...yearsWithData) : currentYear;
+    const years = [];
+    for (let year = currentYear; year >= minYear; year--) years.push(year);
+    if (!years.length) years.push(currentYear);
+
+    const renderYear = (selectedYear) => {
+        graph.innerHTML = "";
+        selectedYearEl.textContent = selectedYear;
+
+        const yearStart = new Date(selectedYear, 0, 1);
+        const yearEnd = new Date(selectedYear, 11, 31);
+
+        const startWeekDay = yearStart.getDay();
+        const gridStart = new Date(yearStart);
+        gridStart.setDate(yearStart.getDate() - startWeekDay);
+
+        const endWeekDay = yearEnd.getDay();
+        const gridEnd = new Date(yearEnd);
+        gridEnd.setDate(yearEnd.getDate() + (6 - endWeekDay));
+
+        const days = [];
+        for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+            days.push(new Date(d));
+        }
+
+        let totalContributions = 0;
+        let activeDays = 0;
+        let maxStreak = 0;
+        let currentRun = 0;
+        let latestStreak = 0;
+        let atYearEnd = false;
+
+        for (let i = 0; i < 365 + (new Date(selectedYear, 1, 29).getMonth() === 1 ? 1 : 0); i++) {
+            const d = new Date(yearStart);
+            d.setDate(yearStart.getDate() + i);
+            if (d > yearEnd) break;
+            const key = fmt(d);
+            const count = countByDate[key] || 0;
+            totalContributions += count;
+            if (count > 0) {
+                activeDays += 1;
+                currentRun += 1;
+                if (currentRun > maxStreak) maxStreak = currentRun;
+            } else {
+                currentRun = 0;
+            }
+            atYearEnd = true;
+            if (atYearEnd) latestStreak = currentRun;
+        }
+
+        totalEl.textContent = totalContributions;
+        activeDaysEl.textContent = activeDays;
+        currentStreakEl.textContent = latestStreak;
+        streakEl.textContent = maxStreak;
+
+        const monthLabels = [];
+        const seenMonths = new Set();
+        days.forEach((d, index) => {
+            if (d < yearStart || d > yearEnd) return;
+            const key = `${d.getFullYear()}-${d.getMonth()}`;
+            if (d.getDate() <= 7 && !seenMonths.has(key)) {
+                seenMonths.add(key);
+                monthLabels.push({
+                    month: d.toLocaleString("default", { month: "short" }),
+                    col: Math.floor(index / 7),
+                });
+            }
+        });
+
+        const monthRow = document.createElement("div");
+        monthRow.className = "mb-2 ml-8 flex text-xs text-gray-500";
+        monthRow.style.gap = "2px";
+        const totalCols = Math.ceil(days.length / 7);
+
+        for (let c = 0; c < totalCols; c++) {
+            const label = monthLabels.find((m) => m.col === c);
+            const cell = document.createElement("div");
+            cell.className = "w-3 text-[10px]";
+            cell.textContent = label ? label.month : "";
+            monthRow.appendChild(cell);
+        }
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "flex items-start gap-2";
+
+        const yLabels = document.createElement("div");
+        yLabels.className = "mt-0.5 grid grid-rows-7 gap-[2px] text-[10px] text-gray-500";
+        ["Sun", "", "Tue", "", "Thu", "", "Sat"].forEach((day) => {
+            const el = document.createElement("div");
+            el.className = "h-3";
+            el.textContent = day;
+            yLabels.appendChild(el);
+        });
+
+        const grid = document.createElement("div");
+        grid.className = "grid gap-[2px]";
+        grid.style.gridTemplateRows = "repeat(7, minmax(0, 1fr))";
+        grid.style.gridAutoFlow = "column";
+
+        days.forEach((d) => {
+            const key = fmt(d);
+            const count = countByDate[key] || 0;
+            const inRange = d >= yearStart && d <= yearEnd;
+
+            const cell = document.createElement("div");
+            cell.className = "h-3 w-3 rounded-[2px]";
+            cell.style.backgroundColor = inRange ? colorFor(count) : "transparent";
+            if (inRange) {
+                cell.title = `${count} contribution${count === 1 ? "" : "s"} on ${key}`;
+            }
+            grid.appendChild(cell);
+        });
+
+        graph.appendChild(monthRow);
+        wrapper.appendChild(yLabels);
+        wrapper.appendChild(grid);
+        graph.appendChild(wrapper);
+    };
+
+    const setActiveYearButton = (selectedYear) => {
+        Array.from(yearList.querySelectorAll("button[data-year]")).forEach((btn) => {
+            const isActive = Number(btn.dataset.year) === selectedYear;
+            btn.className = isActive
+                ? "w-full rounded-md bg-blue-600 px-2 py-1.5 text-left text-sm font-medium text-white"
+                : "w-full rounded-md px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-200";
+        });
+    };
+
+    years.forEach((year) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.year = String(year);
+        btn.textContent = String(year);
+        btn.className = "w-full rounded-md px-2 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-200";
+        btn.addEventListener("click", () => {
+            renderYear(year);
+            setActiveYearButton(year);
+        });
+        yearList.appendChild(btn);
+    });
+
+    renderYear(years[0]);
+    setActiveYearButton(years[0]);
+})();
+
+(function () {
+    const items = Array.from(document.querySelectorAll(".profile-solution-item"));
+    const toggleBtn = document.getElementById("toggle-solutions-btn");
+    const visibleCount = 7;
+
+    if (!toggleBtn || items.length <= visibleCount) return;
+
+    let expanded = false;
+
+    const applyVisibility = () => {
+        items.forEach((item, idx) => {
+            if (!expanded && idx >= visibleCount) {
+                item.classList.add("hidden");
+            } else {
+                item.classList.remove("hidden");
+            }
+        });
+        toggleBtn.textContent = expanded ? "Show less" : "View all solutions";
+    };
+
+    toggleBtn.addEventListener("click", function () {
+        expanded = !expanded;
+        applyVisibility();
+    });
+
+    applyVisibility();
+})();
+
+(function () {
+    const items = Array.from(document.querySelectorAll(".profile-problem-item"));
+    const toggleBtn = document.getElementById("toggle-problems-btn");
+    const visibleCount = 7;
+
+    if (!toggleBtn || items.length <= visibleCount) return;
+
+    let expanded = false;
+
+    const applyVisibility = () => {
+        items.forEach((item, idx) => {
+            if (!expanded && idx >= visibleCount) {
+                item.classList.add("hidden");
+            } else {
+                item.classList.remove("hidden");
+            }
+        });
+        toggleBtn.textContent = expanded ? "Show less" : "View all problems";
+    };
+
+    toggleBtn.addEventListener("click", function () {
+        expanded = !expanded;
+        applyVisibility();
+    });
+
+    applyVisibility();
+})();
+</script>
+{% endblock %}
+

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Edit Profile</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <label>Username:</label><br>
+    <input type="text" name="username" value="{{ user.username }}"><br><br>
+
+    <label>Email:</label><br>
+    <input type="email" name="email" value="{{ user.email }}"><br><br>
+
+    <label>Bio:</label><br>
+    <textarea name="bio">{{ profile.bio }}</textarea><br><br>
+
+    <label>GitHub:</label><br>
+    <input type="url" name="github" value="{{ profile.github }}"><br><br>
+
+    <label>LinkedIn:</label><br>
+    <input type="url" name="linkedin" value="{{ profile.linkedin }}"><br><br>
+
+    <label>Profile Image:</label><br>
+    {% if profile.profile_image %}
+        <img src="{{ profile.profile_image.url }}" alt="Current profile image" style="width:64px; height:64px; border-radius:50%; object-fit:cover; margin-bottom:8px;">
+    {% endif %}
+    <input type="file" name="profile_image" accept="image/*"><br><br>
+
+    <button type="submit">Save Changes</button>
+</form>
+{% endblock %}

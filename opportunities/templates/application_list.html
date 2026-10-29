@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="max-w-6xl mx-auto mt-10">
+
+    <!-- HEADER -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Applications</h1>
+            <p class="text-sm text-gray-500">People who applied to your opportunities</p>
+        </div>
+    </div>
+
+    {% if applications %}
+
+        <div class="space-y-4">
+
+            {% for app in applications %}
+            <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition">
+
+                <!-- TOP -->
+                <div class="flex items-start justify-between">
+
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">
+                            {{ app.user.username }}
+                        </h2>
+
+                        <p class="text-sm text-gray-500">
+                            Applied for:
+                            <span class="font-medium text-gray-700">
+                                {{ app.opportunity.title }}
+                            </span>
+                        </p>
+
+                        {% comment %} <a href="{% url 'send_invitation' app.user.id app.opportunity.id %}"
+                            class="bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                            Invite
+                        </a> {% endcomment %}
+
+                        <form method="POST" action="{% url 'send_invitation' %}">
+                            {% csrf_token %}
+
+                            <input type="hidden" name="username" value="{{ app.user.username }}">
+                            <input type="hidden" name="message" value="Let's collaborate">
+
+                            <button type="submit"
+                                class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                Invite
+                            </button>
+                        </form>
+
+
+                    </div>
+
+                    <span class="text-xs text-gray-400">
+                        {{ app.created_at|timesince }} ago
+                    </span>
+                </div>
+
+                <!-- MESSAGE -->
+                <div class="mt-4 text-sm text-gray-700 bg-gray-50 p-3 rounded">
+                    {{ app.message }}
+                </div>
+
+                <!-- LINKS -->
+                <div class="mt-4 flex flex-wrap gap-3 text-sm">
+
+                    {% if app.github %}
+                        <a href="{{ app.github }}" target="_blank"
+                           class="text-blue-600 hover:underline">
+                           GitHub
+                        </a>
+                    {% endif %}
+
+                    {% if app.resume %}
+                        <a href="{{ app.resume }}" target="_blank"
+                           class="text-green-600 hover:underline">
+                           Resume
+                        </a>
+                    {% endif %}
+
+                    <a href="{% url 'accounts:profile' app.user.username %}"
+                       class="text-gray-600 hover:underline">
+                       View Profile
+                    </a>
+
+                </div>
+
+                <!-- ACTIONS -->
+                <div class="mt-5 flex gap-3">
+
+                    {% if app.status == "pending" %}
+                        <form method="POST" action="{% url 'accept_application' app.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-green-600 text-white px-4 py-1 rounded text-sm hover:bg-green-700">Accept</button>
+                        </form>
+
+                        <form method="POST" action="{% url 'reject_application' app.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-red-500 text-white px-4 py-1 rounded text-sm hover:bg-red-600">Reject</button>
+                        </form>
+
+                    {% elif app.status == "accepted" %}
+                        <span class="bg-green-100 text-green-700 px-3 py-1 rounded text-sm">
+                            Accepted ✅
+                        </span>
+                        {% if app.collaboration_project %}
+                        <a href="{% url 'project_detail' app.collaboration_project.id %}" class="text-sm font-medium text-blue-600 hover:underline">Open project</a>
+                        {% endif %}
+
+                    {% elif app.status == "rejected" %}
+                        <span class="bg-red-100 text-red-600 px-3 py-1 rounded text-sm">
+                            Rejected ❌
+                        </span>
+                    {% endif %}
+
+                </div>
+
+            </div>
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <!-- EMPTY STATE -->
+        <div class="text-center mt-20 text-gray-500">
+            <p class="text-lg">No applications yet</p>
+            <p class="text-sm">Once users apply, they will appear here</p>
+        </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

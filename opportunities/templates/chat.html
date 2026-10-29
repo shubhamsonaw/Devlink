@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+
+    <!-- HEADER -->
+    <div class="bg-white border rounded-t-xl px-6 py-4 flex items-center justify-between">
+
+        <div>
+            <h1 class="text-lg font-semibold text-gray-900">
+                {{ other_user.username }}
+            </h1>
+
+            <p class="text-sm text-gray-500">
+                Connected Developer
+            </p>
+        </div>
+
+    </div>
+
+    <!-- CHAT BOX -->
+    <div id="chat-box"
+        class="bg-white border-x border-b h-[300px] overflow-y-auto p-6 space-y-4">
+
+        {% for msg in chat_messages %}
+
+            {% if msg.sender == request.user %}
+
+                <!-- MY MESSAGE -->
+                <div class="flex justify-end">
+
+                    <div class="bg-blue-600 text-white px-4 py-2 rounded-2xl max-w-md">
+                        {{ msg.content }}
+                    </div>
+
+                </div>
+
+            {% else %}
+
+                <!-- OTHER USER -->
+                <div class="flex justify-start">
+
+                    <div class="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-md">
+                        {{ msg.content }}
+                    </div>
+
+                </div>
+
+            {% endif %}
+
+        {% empty %}
+
+            <div class="text-center text-gray-500 mt-10">
+                No messages yet
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+    <!-- SEND MESSAGE -->
+    {% comment %} <form method="POST" class="bg-white border rounded-b-xl p-4 flex gap-3">
+
+        {% csrf_token %}
+
+        <input
+            type="text"
+            name="content"
+            placeholder="Type your message..."
+            class="flex-1 border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+            required
+        >
+
+        <button
+            type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition"
+        >
+            Send
+        </button>
+
+    </form> {% endcomment %}
+
+    <div class="bg-white border rounded-b-xl p-4 flex gap-3">
+
+        <input
+            type="text"
+            id="chat-message-input"
+            placeholder="Type your message..."
+            class="flex-1 border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+        >
+
+        <button
+            id="chat-message-submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition"
+        >
+            Send
+        </button>
+
+    </div>
+
+
+
+</div>
+
+{% comment %} <script>
+
+setInterval(() => {
+
+    fetch(window.location.href)
+        .then(response => response.text())
+        .then(data => {
+
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(data, 'text/html');
+
+            const newChat =
+                htmlDoc.querySelector('#chat-box').innerHTML;
+
+            document.querySelector('#chat-box').innerHTML = newChat;
+
+        });
+
+}, 2000);
+
+function scrollToBottom() {
+
+    const chatBox = document.querySelector('#chat-box');
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+scrollToBottom();
+
+setInterval(scrollToBottom, 1000);
+
+</script> {% endcomment %}
+
+
+<script>
+
+const username = "{{ other_user.username|escapejs }}";
+const currentUserId = {{ request.user.id }};
+const socketScheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+const chatSocket = new WebSocket(
+    socketScheme + window.location.host + '/ws/chat/' + encodeURIComponent(username) + '/'
+);
+
+
+chatSocket.onmessage = function(e) {
+
+    const data = JSON.parse(e.data);
+
+    const chatBox = document.querySelector('#chat-box');
+
+    const row = document.createElement('div');
+    row.className = data.sender_id === currentUserId ? 'flex justify-end' : 'flex justify-start';
+    const bubble = document.createElement('div');
+    bubble.className = data.sender_id === currentUserId
+        ? 'bg-blue-600 text-white px-4 py-2 rounded-2xl max-w-md'
+        : 'bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-md';
+    bubble.textContent = data.message;
+    row.appendChild(bubble);
+    chatBox.appendChild(row);
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+};
+
+
+document.querySelector('#chat-message-submit').onclick = function(e) {
+
+    const input = document.querySelector('#chat-message-input');
+
+    const message = input.value;
+
+    if (message.trim() === '') return;
+
+    if (chatSocket.readyState !== WebSocket.OPEN) return;
+    chatSocket.send(JSON.stringify({ 'message': message }));
+
+    input.value = '';
+};
+
+</script>
+
+{% endblock %}

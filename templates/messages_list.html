@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900">
+            Messages
+        </h1>
+    </div>
+
+    {% if conversations %}
+
+        <div class="space-y-3">
+
+            {% for convo in conversations %}
+
+            <a href="{% url 'chat' convo.user.username %}"
+               class="block bg-white border rounded-xl p-4 hover:shadow-md transition">
+
+                <div class="flex items-center justify-between">
+
+                    <!-- LEFT -->
+                    <div>
+
+                        <div class="flex items-center gap-2">
+
+                            <h2 class="font-semibold text-gray-900">
+                                {{ convo.user.username }}
+                            </h2>
+
+                            {% if convo.unread_count > 0 %}
+                                <span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                    {{ convo.unread_count }}
+                                </span>
+                            {% endif %}
+
+                        </div>
+
+                        <p class="text-sm text-gray-600 mt-1 truncate">
+                            {{ convo.last_message.content }}
+                        </p>
+
+                    </div>
+
+                    <!-- RIGHT -->
+                    <div class="text-xs text-gray-400">
+                        {{ convo.last_message.timestamp|timesince }} ago
+                    </div>
+
+                </div>
+
+            </a>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="bg-white border rounded-xl p-10 text-center">
+
+            <div class="text-5xl mb-4">
+                💬
+            </div>
+
+            <h2 class="text-lg font-semibold text-gray-900 mb-2">
+                No conversations yet
+            </h2>
+
+            <p class="text-gray-500">
+                Start connecting with developers and send messages.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

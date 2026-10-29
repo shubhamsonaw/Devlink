@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+<h1>All Problems</h1>
+
+<form method="GET" style="margin-bottom: 20px;">
+    <input 
+        type="text" 
+        name="q" 
+        placeholder="Search problems..." 
+        value="{{ query|default:'' }}"
+        style="padding:5px; width:250px;border-radius: 10px"
+    >
+    <button type="submit" style="margin-left: 10px;">Search</button>
+</form>
+
+{% for problem in problems %}
+    <div style="margin-bottom:20px; border:1px solid #ccc; padding:10px; border-radius: 25px">
+
+<h3 class="flex flex-wrap items-center gap-2">
+    <!-- 🎯 DIFFICULTY TAG -->
+
+
+    <a href="{% url 'problem_detail' problem.id %}">
+        {{ problem.title }}
+    </a>
+    <span class="rounded-full px-2 py-1 text-[11px] font-semibold {% if problem.status == 'resolved' %}bg-green-100 text-green-800{% else %}bg-blue-50 text-blue-700{% endif %}">{{ problem.get_status_display }}</span>
+</h3>
+
+        <p>{{ problem.description|truncatewords:20 }}</p>
+
+   
+<div style="margin-top:5px;">
+    {% for tag in problem.tags.all %}
+        <a href="?tag={{ tag.name }}" style="text-decoration:none;">
+            <span style="
+                background-color: #e1ecf4;
+                color: #39739d;
+                padding: 3px 6px;
+                border-radius: 3px;
+                font-size: 12px;
+                margin-right: 5px;
+            ">
+                {{ tag.name }}
+            </span>
+        </a>
+    {% endfor %}
+</div>
+
+        <small>Posted by {{ problem.user.username }}</small>
+    </div>
+{% endfor %}
+
+{% if not problems %}
+    <p>No problems found.</p>
+{% endif %}
+
+{% endblock %}

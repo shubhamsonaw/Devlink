@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="max-w-6xl mx-auto px-6 py-10">
+
+    <div class="mb-10">
+        <h1 class="text-3xl font-semibold text-gray-900">
+            Build. Solve. Collaborate.
+        </h1>
+        <p class="text-gray-500 mt-2">
+            A developer platform to solve problems, share knowledge, and connect with opportunities.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-3 gap-8">
+        <div class="col-span-2">
+            <h2 class="text-lg font-semibold mb-4">Trending Problems</h2>
+            <div class="border rounded" style="border-radius: 15px;">
+                {% for problem in problems %}
+                <div class="p-4 border-b hover:bg-gray-50">
+                    <a href="{% url 'problem_detail' problem.id %}" class="text-blue-600 font-medium hover:underline">
+                        {{ problem.title }}
+                    </a>
+                    <div class="text-sm text-gray-500 mt-1">
+                        {{ problem.description|truncatewords:12 }}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-4 text-gray-500">No problems yet</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold mb-3">Top Contributors</h2>
+                <div class="border rounded" style="border-radius: 15px;">
+                    {% for user in top_users %}
+                    <div class="p-3 border-b flex justify-between">
+                        <a href="{% url 'accounts:profile' user.username %}" class="text-blue-600 hover:underline">
+                            {{ user.username }}
+                        </a>
+                        <span class="text-sm text-gray-500">{{ user.total_solutions }} solutions</span>
+                    </div>
+                    {% empty %}
+                    <div class="p-3 text-sm text-gray-500">No contributors yet</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-semibold mb-3">Latest Solutions</h2>
+                <div class="border rounded" style="border-radius: 15px;">
+                    {% for sol in solutions %}
+                    <div class="p-3 border-b">
+                        <a href="{% url 'problem_detail' sol.problem.id %}" class="text-blue-600 hover:underline text-sm">
+                            {{ sol.problem.title }}
+                        </a>
+                        <div class="text-xs text-gray-500">by {{ sol.user.username }}</div>
+                    </div>
+                    {% empty %}
+                    <div class="p-3 text-sm text-gray-500">No solutions yet</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

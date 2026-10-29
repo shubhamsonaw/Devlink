@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="max-w-6xl mx-auto px-6 py-8">
+
+    <!-- HEADER -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-semibold">Dashboard</h1>
+        <p class="text-gray-500 text-sm">Your activity and insights</p>
+    </div>
+
+    <div class="grid grid-cols-3 gap-8">
+
+        <!-- LEFT -->
+        <div class="col-span-2">
+
+            <!-- STATS -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="border rounded p-4">
+                    <p class="text-sm text-gray-500">Solutions</p>
+                    <p class="text-xl font-semibold">{{ user_stats.solutions_count }}</p>
+                </div>
+
+                <div class="border rounded p-4">
+                    <p class="text-sm text-gray-500">Accepted</p>
+                    <p class="text-xl font-semibold">{{ user_stats.accepted_count }}</p>
+                </div>
+            </div>
+
+            <!-- YOUR SOLUTIONS -->
+            <h2 class="text-lg font-semibold mb-3">Your Recent Solutions</h2>
+
+            <div class="border rounded">
+
+                {% for sol in solutions %}
+                <div class="p-3 border-b">
+                    <a href="{% url 'problem_detail' sol.problem.id %}" class="text-blue-600 hover:underline">
+                        {{ sol.problem.title }}
+                    </a>
+                    <div class="text-xs text-gray-500">
+                        {{ sol.created_at|timesince }} ago
+                    </div>
+                </div>
+                {% empty %}
+                <div class="p-3 text-gray-500">No solutions yet</div>
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT -->
+        <div>
+
+            <!-- TOP USERS -->
+            <h2 class="text-lg font-semibold mb-3">Top Contributors</h2>
+
+            <div class="border rounded mb-6">
+
+                {% for user in top_users %}
+                <div class="p-3 border-b flex justify-between">
+                    <span>{{ user.username }}</span>
+                    <span class="text-sm text-gray-500">
+                        {{ user.total_solutions }}
+                    </span>
+                </div>
+                {% endfor %}
+
+            </div>
+
+            <!-- RECOMMENDED -->
+            <h2 class="text-lg font-semibold mb-3">Explore Problems</h2>
+
+            <div class="border rounded">
+
+                {% for problem in problems %}
+                <div class="p-3 border-b">
+                    <a href="{% url 'problem_detail' problem.id %}" class="text-blue-600 hover:underline">
+                        {{ problem.title }}
+                    </a>
+                </div>
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

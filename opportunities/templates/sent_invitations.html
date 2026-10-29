@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+
+<h1 class="text-xl font-semibold mb-6">Sent Invitations</h1>
+
+{% for invite in invites %}
+<div class="border p-4 rounded-lg bg-white mb-3">
+
+    <p class="font-semibold">{{ invite.receiver.username }}</p>
+    <p class="text-sm text-gray-500">{{ invite.message }}</p>
+
+    <span class="text-xs px-2 py-1 rounded
+        {% if invite.status == 'pending' %} bg-yellow-100 text-yellow-700
+        {% elif invite.status == 'accepted' %} bg-green-100 text-green-700
+        {% else %} bg-red-100 text-red-700
+        {% endif %}
+    ">
+        {{ invite.status }}
+    </span>
+
+</div>
+{% endfor %}
+
+</div>
+
+{% endblock %}

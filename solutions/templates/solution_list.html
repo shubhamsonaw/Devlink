@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-5 flex flex-wrap items-center gap-3">
+    <h1 class="text-2xl font-bold mr-auto">Solutions for {{ problem.title }}</h1>
+
+    <div class="relative">
+        <button
+            type="button"
+            onclick="toggleSortMenu()"
+            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50"
+        >
+            Sort Solutions
+        </button>
+        <div
+            id="sort-menu"
+            class="hidden absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow z-10"
+        >
+            <a href="?sort=latest" class="block px-4 py-2 text-sm hover:bg-gray-100">Latest</a>
+            <a href="?sort=popular" class="block px-4 py-2 text-sm hover:bg-gray-100">Most Popular</a>
+        </div>
+    </div>
+</div>
+
+<p class="mb-6 text-sm text-gray-600">
+    Sorting by:
+    <span class="font-semibold text-gray-900">{{ current_sort|title }}</span>
+</p>
+
+{% for sol in solutions %}
+<div class="mb-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+        <a href="{% url 'accounts:profile' sol.user.username %}" class="font-semibold text-blue-600 hover:underline">
+            {{ sol.user.username }}
+        </a>
+        <span class="text-xs text-gray-500">{{ sol.created_at|timesince }} ago</span>
+        {% if sol.is_accepted %}
+            <span class="ml-auto rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">Accepted</span>
+        {% endif %}
+    </div>
+
+    {% if sol.explanation %}
+        <p class="mb-4 whitespace-pre-line text-gray-800">{{ sol.explanation }}</p>
+    {% endif %}
+
+    {% if sol.code %}
+        <pre class="mb-4 overflow-x-auto rounded-lg bg-gray-900 p-4 text-sm text-gray-100">{{ sol.code }}</pre>
+    {% endif %}
+
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+        {% if user.is_authenticated %}
+            <button
+                id="vote-btn-{{ sol.id }}"
+                onclick="voteSolution({{ sol.id }})"
+                class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-100 {% if sol.id in user_votes %}bg-green-100 border-green-300 text-green-700{% endif %}"
+            >
+                👍 <span id="vote-count-{{ sol.id }}">{{ sol.votes.count }}</span>
+            </button>
+        {% else %}
+            <button disabled class="cursor-not-allowed rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm text-gray-500">
+                👍 Login to vote ({{ sol.votes.count }})
+            </button>
+        {% endif %}
+
+        {% if user.is_authenticated and user == problem.user %}
+            {% if not sol.is_accepted %}
+                <form method="POST" action="{% url 'accept_solution' sol.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
+                        Accept Solution
+                    </button>
+                </form>
+            {% else %}
+                <span class="rounded-lg bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
+                    Accepted by you
+                </span>
+            {% endif %}
+            {% if sol.is_accepted and sol.user != problem.user %}
+                {% if sol.id in pending_solution_invites %}
+                    <span class="text-sm text-gray-500">Collaboration invite pending</span>
+                {% elif sol.user.id in connected_solver_ids %}
+                    <span class="text-sm text-gray-500">Already connected</span>
+                {% else %}
+                    <form method="POST" action="{% url 'invite_solution_collaborator' sol.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">Invite to collaborate</button>
+                    </form>
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    </div>
+
+    {% if user.is_authenticated %}
+        <form method="POST" action="{% url 'add_comment' sol.id %}" class="mb-4 flex gap-2">
+            {% csrf_token %}
+            <input
+                type="text"
+                name="text"
+                placeholder="Add a comment..."
+                required
+                class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+            <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                Comment
+            </button>
+        </form>
+    {% else %}
+        <p class="mb-4 text-sm text-gray-500">Login to add a comment.</p>
+    {% endif %}
+
+    <div class="space-y-2">
+        {% for comment in sol.comments.all %}
+            {% if not comment.parent %}
+                {% include "comment.html" with comment=comment level=0 %}
+            {% endif %}
+        {% empty %}
+            <p class="text-sm text-gray-500">No comments yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% empty %}
+<div class="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-600">
+    No solutions posted yet.
+</div>
+{% endfor %}
+
+<script>
+function getCookie(name) {
+    const item = document.cookie.split('; ').find(row => row.startsWith(name + '='));
+    return item ? decodeURIComponent(item.split('=')[1]) : '';
+}
+
+function voteSolution(solutionId) {
+    fetch(`/solutions/vote/${solutionId}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    })
+        .then(response => {
+            if (!response.ok) throw new Error('Vote update failed');
+            return response.json();
+        })
+        .then(data => {
+            const count = document.getElementById(`vote-count-${solutionId}`);
+            const btn = document.getElementById(`vote-btn-${solutionId}`);
+
+            count.innerText = data.total_votes;
+
+            if (data.voted) {
+                btn.classList.add("bg-green-100", "border-green-300", "text-green-700");
+            } else {
+                btn.classList.remove("bg-green-100", "border-green-300", "text-green-700");
+            }
+        })
+        .catch(() => window.location.reload());
+}
+
+function toggleSortMenu() {
+    const menu = document.getElementById("sort-menu");
+    menu.classList.toggle("hidden");
+}
+
+function toggleReply(commentId) {
+    const box = document.getElementById(`reply-box-${commentId}`);
+    box.classList.toggle("hidden");
+}
+
+function cancelReply(commentId) {
+    const box = document.getElementById(`reply-box-${commentId}`);
+    box.classList.add("hidden");
+}
+</script>
+{% endblock %}
