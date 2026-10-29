@@ -122,11 +122,11 @@
 
                 <div class="mt-3 flex items-center justify-end gap-2 text-xs text-gray-500">
                     <span>Less</span>
-                    <span class="h-3 w-3 rounded-[2px] bg-[#ebedf0]"></span>
-                    <span class="h-3 w-3 rounded-[2px] bg-[#9be9a8]"></span>
-                    <span class="h-3 w-3 rounded-[2px] bg-[#40c463]"></span>
-                    <span class="h-3 w-3 rounded-[2px] bg-[#30a14e]"></span>
-                    <span class="h-3 w-3 rounded-[2px] bg-[#216e39]"></span>
+                    <span data-contribution-level="0" class="h-3 w-3 rounded-[2px]"></span>
+                    <span data-contribution-level="1" class="h-3 w-3 rounded-[2px]"></span>
+                    <span data-contribution-level="2" class="h-3 w-3 rounded-[2px]"></span>
+                    <span data-contribution-level="3" class="h-3 w-3 rounded-[2px]"></span>
+                    <span data-contribution-level="4" class="h-3 w-3 rounded-[2px]"></span>
                     <span>More</span>
                 </div>
             </div>
@@ -273,14 +273,6 @@
         return `${y}-${m}-${day}`;
     };
 
-    const colorFor = (count) => {
-        if (count <= 0) return "#ebedf0";
-        if (count === 1) return "#9be9a8";
-        if (count === 2) return "#40c463";
-        if (count <= 4) return "#30a14e";
-        return "#216e39";
-    };
-
     const yearsWithData = Array.from(
         new Set(allDates.map((date) => Number(date.slice(0, 4))).filter((year) => Number.isFinite(year)))
     );
@@ -388,10 +380,11 @@
             const key = fmt(d);
             const count = countByDate[key] || 0;
             const inRange = d >= yearStart && d <= yearEnd;
+            const level = count <= 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count <= 4 ? 3 : 4;
 
             const cell = document.createElement("div");
             cell.className = "h-3 w-3 rounded-[2px]";
-            cell.style.backgroundColor = inRange ? colorFor(count) : "transparent";
+            if (inRange) cell.dataset.contributionLevel = String(level);
             if (inRange) {
                 cell.title = `${count} contribution${count === 1 ? "" : "s"} on ${key}`;
             }

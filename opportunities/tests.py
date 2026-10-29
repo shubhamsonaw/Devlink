@@ -232,6 +232,8 @@ class CollaborationCycleTests(TestCase):
         self.client.force_login(self.owner)
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="theme-toggle"')
+        self.assertContains(response, 'css/theme.css')
         self.assertContains(response, 'Build. Solve. Collaborate.')
         self.assertContains(response, 'Trending Problems')
         self.assertContains(response, 'Top Contributors')

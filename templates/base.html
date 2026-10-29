@@ -10,9 +10,26 @@
 <head>
     <title>Connect</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f3f4f6">
+
+    <script>
+        (() => {
+            let theme = 'light';
+            try {
+                theme = localStorage.getItem('connect-theme') === 'dark' ? 'dark' : 'light';
+            } catch (error) {
+                // Keep the light theme when browser storage is unavailable.
+            }
+            document.documentElement.dataset.theme = theme;
+            document.documentElement.style.colorScheme = theme;
+            const themeColor = document.querySelector('meta[name="theme-color"]');
+            if (themeColor && theme === 'dark') themeColor.content = '#0d1117';
+        })();
+    </script>
 
     <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'css/theme.css' %}">
 
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -27,7 +44,12 @@
                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">C</span>
                 <span>Connect</span>
             </a>
-            <div class="ml-auto">
+            <div class="ml-auto flex items-center gap-2">
+                <button id="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode" class="inline-flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <svg id="theme-icon-moon" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5a8.5 8.5 0 1 0 12 12Z"/><path stroke-linecap="round" d="M16 3v4m-2-2h4"/></svg>
+                    <svg id="theme-icon-sun" class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+                    <span class="sr-only">Switch to dark mode</span>
+                </button>
                 {% if user.is_authenticated %}
                 <a href="{% url 'accounts:profile' user.username %}" aria-label="View your profile">
                     {% if nav_profile_image_url %}
@@ -141,6 +163,41 @@
     </div>
 
     <script>
+    (() => {
+        const root = document.documentElement;
+        const toggle = document.getElementById('theme-toggle');
+        const moon = document.getElementById('theme-icon-moon');
+        const sun = document.getElementById('theme-icon-sun');
+        if (!toggle || !moon || !sun) return;
+
+        const syncThemeControl = () => {
+            const isDark = root.dataset.theme === 'dark';
+            const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+            toggle.setAttribute('aria-label', label);
+            toggle.setAttribute('aria-pressed', String(isDark));
+            toggle.setAttribute('title', label);
+            toggle.querySelector('.sr-only').textContent = label;
+            moon.classList.toggle('hidden', isDark);
+            sun.classList.toggle('hidden', !isDark);
+        };
+
+        syncThemeControl();
+        toggle.addEventListener('click', () => {
+            const theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+            root.dataset.theme = theme;
+            root.style.colorScheme = theme;
+            const themeColor = document.querySelector('meta[name="theme-color"]');
+            if (themeColor) themeColor.content = theme === 'dark' ? '#0d1117' : '#f3f4f6';
+            try {
+                localStorage.setItem('connect-theme', theme);
+            } catch (error) {
+                // Theme still changes for this page when browser storage is unavailable.
+            }
+            syncThemeControl();
+            document.dispatchEvent(new CustomEvent('connect-theme-change', { detail: { theme } }));
+        });
+    })();
+
     (() => {
         const toggle = document.getElementById('sidebar-toggle');
         const sidebar = document.getElementById('app-sidebar');
