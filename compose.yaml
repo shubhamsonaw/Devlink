@@ -1,0 +1,72 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-connect}
+      POSTGRES_USER: ${DATABASE_USER:-connect}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-connect-local-demo}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-connect} -d ${DATABASE_NAME:-connect}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  web:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-development-only-change-me-before-deployment}
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-development-only-change-me-before-deployment}
+      DATABASE_NAME: ${DATABASE_NAME:-connect}
+      DATABASE_USER: ${DATABASE_USER:-connect}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-connect-local-demo}
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      REDIS_CACHE_URL: redis://redis:6379/1
+    command:
+      - sh
+      - -c
+      - python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "127.0.0.1:${APP_PORT:-8001}:8000"
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  media_data:

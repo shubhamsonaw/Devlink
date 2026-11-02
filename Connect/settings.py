@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 import os
 
 
@@ -46,6 +47,8 @@ INSTALLED_APPS = [
     # Registers Daphne's ASGI-aware runserver so Channels WebSockets work locally.
     'daphne',
     'channels',
+    'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     'accounts.apps.AccountsConfig',
     'opportunities.apps.OpportunitiesConfig',
     'problems.apps.ProblemsConfig',
@@ -90,12 +93,17 @@ WSGI_APPLICATION = 'Connect.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+# Connect uses PostgreSQL; the SQLite migration source is kept only as an
+# external backup and is not a supported runtime database.
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DATABASE_NAME', 'connect'),
+        'USER': os.environ.get('DATABASE_USER', 'connect'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'connect-local-demo'),
+        'HOST': os.environ.get('DATABASE_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('DATABASE_PORT', '5432'),
+        'CONN_MAX_AGE': 60,
     }
 }
 
@@ -151,7 +159,47 @@ ASGI_APPLICATION = "Connect.asgi.application"
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')],
+        },
     },
+}
+
+# Keep Django's cache separate from Channels by using Redis database 1 here;
+# Channels continues to use database 0 through REDIS_URL above.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.environ.get('REDIS_CACHE_URL', 'redis://127.0.0.1:6379/1'),
+        'KEY_PREFIX': 'connect',
+        'TIMEOUT': 300,
+    },
+}
+
+# Keep JWT auth scoped to the API; browser views continue using Django sessions.
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'jwt_obtain': '10/minute',
+        'jwt_refresh': '30/minute',
+        'jwt_blacklist': '30/minute',
+    },
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+    'SIGNING_KEY': os.environ.get('JWT_SIGNING_KEY', SECRET_KEY),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'CHECK_REVOKE_TOKEN': True,
 }
 
