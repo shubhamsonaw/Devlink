@@ -41,6 +41,7 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-connect-local-demo}
       DATABASE_HOST: db
       DATABASE_PORT: "5432"
+      NEON_DATABASE_URL: ${NEON_DATABASE_URL:-}
       REDIS_URL: redis://redis:6379/0
       REDIS_CACHE_URL: redis://redis:6379/1
     command:

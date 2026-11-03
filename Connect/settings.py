@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+from urllib.parse import parse_qs, unquote, urlparse
+
+from django.core.exceptions import ImproperlyConfigured
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -29,13 +32,33 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', '1').lower() in {'1', 'true', 'yes'}
+DEBUG_DEFAULT = '0' if os.environ.get('RENDER', '').lower() == 'true' else '1'
+DEBUG = os.environ.get('DJANGO_DEBUG', DEBUG_DEFAULT).lower() in {'1', 'true', 'yes'}
 
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1]').split(',')
     if host.strip()
 ]
+render_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if render_hostname and render_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_hostname)
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+render_url = os.environ.get('RENDER_EXTERNAL_URL')
+if render_url and render_url not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(render_url)
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '86400'))
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 if not DEBUG and SECRET_KEY == 'development-only-change-me-before-deployment':
     raise ValueError('Set DJANGO_SECRET_KEY before running with DJANGO_DEBUG=0.')
@@ -71,6 +94,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+if not DEBUG:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
 ROOT_URLCONF = 'Connect.urls'
 
 TEMPLATES = [
@@ -93,19 +119,45 @@ WSGI_APPLICATION = 'Connect.wsgi.application'
 
 
 # Database
-# Connect uses PostgreSQL; the SQLite migration source is kept only as an
-# external backup and is not a supported runtime database.
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DATABASE_NAME', 'connect'),
-        'USER': os.environ.get('DATABASE_USER', 'connect'),
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'connect-local-demo'),
-        'HOST': os.environ.get('DATABASE_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DATABASE_PORT', '5432'),
-        'CONN_MAX_AGE': 60,
+# Prefer the hosted PostgreSQL URL when configured; otherwise retain the
+# existing local PostgreSQL settings for development.
+DATABASE_URL = os.environ.get('NEON_DATABASE_URL') or os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    database_url = urlparse(DATABASE_URL)
+    if database_url.scheme not in {'postgres', 'postgresql'} or not database_url.hostname:
+        raise ImproperlyConfigured('NEON_DATABASE_URL must be a valid PostgreSQL connection URL.')
+
+    database_query = parse_qs(database_url.query)
+    database_options = {}
+    if 'sslmode' in database_query:
+        database_options['sslmode'] = database_query['sslmode'][0]
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': unquote(database_url.path.lstrip('/')),
+            'USER': unquote(database_url.username or ''),
+            'PASSWORD': unquote(database_url.password or ''),
+            'HOST': database_url.hostname,
+            'PORT': str(database_url.port or 5432),
+            'OPTIONS': database_options,
+            'CONN_MAX_AGE': 60,
+            'CONN_HEALTH_CHECKS': True,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DATABASE_NAME', 'connect'),
+            'USER': os.environ.get('DATABASE_USER', 'connect'),
+            'PASSWORD': os.environ.get('DATABASE_PASSWORD', 'connect-local-demo'),
+            'HOST': os.environ.get('DATABASE_HOST', '127.0.0.1'),
+            'PORT': os.environ.get('DATABASE_PORT', '5432'),
+            'CONN_MAX_AGE': 60,
+        }
+    }
 
 
 # Password validation
@@ -142,7 +194,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -150,6 +202,17 @@ MEDIA_ROOT = BASE_DIR / 'media'
 STATICFILES_DIRS = [
     BASE_DIR / "static"
 ]
+
+if not DEBUG:
+    STATIC_ROOT = BASE_DIR / 'staticfiles'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
