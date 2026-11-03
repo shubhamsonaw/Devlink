@@ -3,6 +3,7 @@ from channels.testing import WebsocketCommunicator
 from django.core.management import get_commands
 from django.test import SimpleTestCase, TestCase
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.urls import reverse
 
 from problems.models import Problem
@@ -86,6 +87,67 @@ class CollaborationCycleTests(TestCase):
                         Connection.objects.filter(user1=self.developer, user2=self.owner).exists())
         project = Project.objects.get(source_application=application)
         self.assertSetEqual(set(project.members.all()), {self.owner, self.developer})
+
+    def test_rejected_application_cannot_be_accepted_later(self):
+        opportunity = Opportunity.objects.create(
+            user=self.owner,
+            title='Build the next search feature',
+            description='Collaborate on search improvements.',
+            required_skills='Django, Python',
+        )
+        application = Application.objects.create(
+            user=self.developer,
+            opportunity=opportunity,
+            message='I would like to help.',
+        )
+        self.client.force_login(self.owner)
+
+        response = self.client.post(reverse('reject_application', args=[application.id]))
+        self.assertEqual(response.status_code, 302)
+        application.refresh_from_db()
+        self.assertEqual(application.status, 'rejected')
+
+        response = self.client.post(reverse('accept_application', args=[application.id]))
+        self.assertEqual(response.status_code, 302)
+        application.refresh_from_db()
+        self.assertEqual(application.status, 'rejected')
+        self.assertFalse(Project.objects.filter(source_application=application).exists())
+        self.assertFalse(
+            Connection.objects.filter(
+                Q(user1=self.owner, user2=self.developer) |
+                Q(user1=self.developer, user2=self.owner)
+            ).exists()
+        )
+
+    def test_accepted_application_cannot_be_rejected_later(self):
+        opportunity = Opportunity.objects.create(
+            user=self.owner,
+            title='Build the next search feature',
+            description='Collaborate on search improvements.',
+            required_skills='Django, Python',
+        )
+        application = Application.objects.create(
+            user=self.developer,
+            opportunity=opportunity,
+            message='I would like to help.',
+        )
+        self.client.force_login(self.owner)
+
+        response = self.client.post(reverse('accept_application', args=[application.id]))
+        self.assertEqual(response.status_code, 302)
+        project = Project.objects.get(source_application=application)
+
+        response = self.client.post(reverse('reject_application', args=[application.id]))
+        self.assertEqual(response.status_code, 302)
+        application.refresh_from_db()
+        self.assertEqual(application.status, 'accepted')
+        self.assertTrue(Project.objects.filter(pk=project.pk).exists())
+        self.assertTrue(
+            Connection.objects.filter(
+                Q(user1=self.owner, user2=self.developer) |
+                Q(user1=self.developer, user2=self.owner)
+            ).exists()
+        )
 
     def test_only_project_members_can_post_updates_and_updates_are_public(self):
         project = Project.objects.create(

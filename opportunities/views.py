@@ -216,14 +216,22 @@ def invitation_list(request):
 def accept_application(request, app_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(['POST'])
-    application = get_object_or_404(Application, id=app_id)
-
-    # Only owner can accept
-    if application.opportunity.user != request.user:
-        messages.error(request, "Not allowed")
-        return redirect('application_list')
 
     with transaction.atomic():
+        application = get_object_or_404(
+            Application.objects.select_for_update(), id=app_id
+        )
+
+        # Only the opportunity owner can decide on its applications.
+        if application.opportunity.user_id != request.user.id:
+            messages.error(request, "Not allowed")
+            return redirect('application_list')
+
+        # Decisions are one-way: only a pending application may be accepted.
+        if application.status != 'pending':
+            messages.info(request, "This application has already been decided.")
+            return redirect('application_list')
+
         application.status = 'accepted'
         application.save(update_fields=['status'])
         ensure_connection(application.opportunity.user, application.user)
@@ -245,14 +253,23 @@ def accept_application(request, app_id):
 def reject_application(request, app_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(['POST'])
-    application = get_object_or_404(Application, id=app_id)
 
-    if application.opportunity.user != request.user:
-        messages.error(request, "Not allowed")
-        return redirect('application_list')
+    with transaction.atomic():
+        application = get_object_or_404(
+            Application.objects.select_for_update(), id=app_id
+        )
 
-    application.status = 'rejected'
-    application.save()
+        if application.opportunity.user_id != request.user.id:
+            messages.error(request, "Not allowed")
+            return redirect('application_list')
+
+        # A rejected application cannot overwrite an earlier acceptance.
+        if application.status != 'pending':
+            messages.info(request, "This application has already been decided.")
+            return redirect('application_list')
+
+        application.status = 'rejected'
+        application.save(update_fields=['status'])
 
     messages.warning(request, "Application rejected")
     return redirect('application_list')
